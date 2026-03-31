@@ -77,7 +77,6 @@ def wham(trajectories: np.ndarray, centers: list, force_constants: list, tempera
     histograms = np.array(histograms)  # (n_windows, n_bins)
 
     # Bias energies
-    # U_i(ξ) = 0.5 * k_i * (ξ - center_i)^2
     beta = 1.0 / (k_B * temperature)
     U_ij = np.zeros((n_windows, n_bins))
     for i in range(n_windows):
@@ -90,14 +89,12 @@ def wham(trajectories: np.ndarray, centers: list, force_constants: list, tempera
     converged = False
     for iteration in range(max_iter):
         # 1) Common denominator per bin.
-        # denom_j = sum_i N_i * exp(f_i - beta * U_ij)
-        # exponentials helps with numerical stability
+        # is it better to work with exponentials?
         exp_arg = f_i[:, np.newaxis] - beta * U_ij  # shape (n_windows, n_bins)
         exp_term = np.exp(exp_arg)  # (n_windows, n_bins)
         denom_j = np.sum(N_i[:, np.newaxis] * exp_term, axis=0)  # (n_bins,)
 
         # 2) Compute P_0 
-        # P_0(j) = (sum_i n_i(j)) / denom_j
         n_total_j = np.sum(histograms, axis=0)  # (n_bins,)
         # Avoid ZeroDivisionError
         P_0 = np.zeros_like(n_total_j, dtype=float)
@@ -105,7 +102,6 @@ def wham(trajectories: np.ndarray, centers: list, force_constants: list, tempera
         P_0[nonzero] = n_total_j[nonzero] / denom_j[nonzero]
 
         # 3) Update f_i
-        # f_i_new = -log( sum_j P_0(j) * exp(-beta * U_ij) )
         f_i_new = np.zeros(n_windows)
         for i in range(n_windows):
             log_w_ij = np.log(P_0 + 1e-300) - beta * U_ij[i, :]
@@ -123,10 +119,11 @@ def wham(trajectories: np.ndarray, centers: list, force_constants: list, tempera
             converged = True
             break
 
-    if not converged and verbose:
-        print(f"WARNING: WHAM did not converge after {max_iter} iterations. Max change: {delta:.6e}, tolerance: {tolerance:.6e}")
-    else:
-        print(f"WHAM converged :)  change: {delta:.6e} <= tol: {tolerance:.6e}")
+    if verbose:
+        if not converged:
+            print(f"WARNING: WHAM did not converge after {max_iter} iterations. Max change: {delta:.6e}, tolerance: {tolerance:.6e}")
+        else:
+            print(f"WHAM converged :)  change: {delta:.6e} <= tol: {tolerance:.6e}")
 
     # Compute P_0 with converged f_i
     exp_term = np.exp(f_i[:, np.newaxis] - beta * U_ij)
@@ -135,11 +132,12 @@ def wham(trajectories: np.ndarray, centers: list, force_constants: list, tempera
     nonzero = denom_j > 0
     P_0[nonzero] = n_total_j[nonzero] / denom_j[nonzero]
 
-    # PMF: A(ξ) = -k_B T * log(P_0) + C
+    # get pmf
     # Set minimum to 0
     with np.errstate(divide='ignore', invalid='ignore'):
         pmf = - (1.0 / beta) * np.log(P_0)
     # divergences are presented as nan
+    # is it better to remove them?
     pmf[~np.isfinite(pmf)] = np.nan
     min_val = np.nanmin(pmf)
     pmf -= min_val
