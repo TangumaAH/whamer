@@ -236,7 +236,7 @@ class HistoArray:
         h_vals = self.h_list if self.h_list else [1.0] * len(self.mu_list)
         self.histo_list = [Histo(mu, std, h) for mu, std, h in zip(self.mu_list, self.std_list, h_vals)]
         
-    def map_all(self, points: int = 100, x_array: Optional[np.ndarray] = None, redefine_x: bool = False):
+    def map_all(self, points: int = 300, x_array: Optional[np.ndarray] = None, redefine_x: bool = False):
         """Maps all individual histograms to a common X-axis."""
         if self.x is not None:
             x_temp = self.x
@@ -342,7 +342,7 @@ def profile_computer(
         XVG(profile_name, read=False).write_xvg(pmf_profile.x, pmf_profile.y)
         # Save Histograms
         redefine = histo_points is not None
-        histo_data.map_all(points=histo_points or 100, redefine_x=redefine)
+        histo_data.map_all(points=histo_points or 3 * n_bins, redefine_x=redefine)
         XVG(histo_name, read=False).write_xvg(histo_data.x, *histo_data.maps)
 
     return pmf_profile, histo_data

@@ -11,7 +11,7 @@ whamer.py
 compute_profile.py
 
  Script that can be executed from the command line. It uses whamer.py to compute the PMF and histograms, and saves both as XVG files.
- It can read the center of the potentials and force constants from Gromacs log files. Useful when you are working with different Gromacs versions.
+ It can read the center of the potentials and force constants from Gromacs log files. Useful when you are working with different Gromacs versions or with artificial windows.
 
  Dependencies:
   - NumPy >= 1.21.6
