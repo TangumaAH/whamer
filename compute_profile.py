@@ -1,7 +1,3 @@
-# ---------------------------------------------------------
-# DISCLAIMER: This code has been typed and commented by Gemini.
-# ---------------------------------------------------------
-
 """
 compute_profile.py
 Script to process simulation data and compute PMF profiles using WHAM.
@@ -18,6 +14,7 @@ from typing import List, Tuple, Optional, Union, Any
 from scipy.signal import argrelextrema
 from scipy.stats import norm
 from scipy.optimize import curve_fit
+from scipy.signal import savgol_filter, medfilt
 from whamer import wham
 
 
@@ -56,7 +53,7 @@ def get_args() -> argparse.Namespace:
                             help='Position to crop the profile (removes data beyond this value).')
     prof_group.add_argument('-sm', '--set_min', action='store_true',
                             help='Shift the entire PMF profile so the global minimum is at 0.')
-    prof_group.add_argument('-hpoints', '--histo_points', type=int, default=None,
+    prof_group.add_argument('-hpoints', '--histo_points', type=int, default=300,
                             help='Number of points to interpolate the output histograms.')
 
     # --- Free Energy (Delta G) analysis options ---
@@ -162,6 +159,33 @@ class Profile:
             idx = np.argmin(np.abs(self.bins - max_lim))
             self.bins = self.bins[:idx]
             self.pmf = self.pmf[:idx]
+    
+    def get_min_smoothing(
+            self,
+            window_med: int = 5,
+            window_sg: int = 11,
+            order_sg: int = 3,
+            ) -> int:
+        """
+        Finds index of the minimum by smoothing.
+
+        Parameters:
+            window_med : size of the window for filtering (must be odd number)
+            window_sg : window size for Savitzky-Golay method (must be odd)
+            order_sg : order of Savitzky-Golay polynomial
+
+        Returns:
+            x_min : x position of the minimum
+        """
+        # remove peaks
+        y_med = medfilt(self.y, kernel_size=window_med)
+
+        # Smooth by Savitzky–Golay
+        y_smooth = savgol_filter(y_med, window_length=window_sg, polyorder=order_sg)
+
+        # Find minimum
+        idx_min = np.argmin(y_smooth)
+        return idx_min
 
     @property
     def dg(self) -> float:
@@ -170,29 +194,40 @@ class Profile:
     
     @property
     def min_idx(self) -> int:
-        """Finds the index of the minimum value within specified bounds."""
-        data = self.pmf
-        left_offset = 0
-        
-        # Apply bounds if provided
-        if self.min_left is not None:
-            left_offset = np.argmin(np.abs(self.bins - self.min_left))
-            data = data[left_offset:]
-        if self.min_right is not None:
-            right_idx = np.argmin(np.abs(self.bins - self.min_right))
-            data = data[:right_idx - left_offset]
-        
+        """
+        Finds the index of the minimum value within specified bounds.
+        it tries smoothing by Savitzky-Golay method. If fails, tries
+        to find a minimum by argrelextrema. the last option is the 
+        absolute minimum avoiding nan values.
+        """
         try:
-            # Use local extrema detection
-            idx_min = argrelextrema(data, np.less, order=5)[0][0]
-        except (IndexError, ValueError):
-            # Fallback to absolute minimum
-            idx_min = np.nanargmin(data)
+            idx_min = self.get_min_smoothing()
+        except:
+            data = self.pmf
+            left_offset = 0
             
-        return left_offset + idx_min
+            # Apply bounds if provided
+            if self.min_left is not None:
+                left_offset = np.argmin(np.abs(self.bins - self.min_left))
+                data = data[left_offset:]
+            if self.min_right is not None:
+                right_idx = np.argmin(np.abs(self.bins - self.min_right))
+                data = data[:right_idx - left_offset]
+            
+            try:
+                # Use local extrema detection
+                idx_min = argrelextrema(data, np.less, order=5)[0][0]
+            except (IndexError, ValueError):
+                # Fallback to absolute minimum
+                idx_min = np.nanargmin(data)
+            idx_min = left_offset + idx_min
+        return idx_min
     
     @property
     def min_val(self) -> float:
+        """
+        Return the minimum based on the min_idx
+        """
         return self.pmf[self.min_idx]
     
     @property
@@ -204,10 +239,14 @@ class Profile:
         return np.nanmax(self.pmf)
 
     @property
-    def x(self) -> np.ndarray: return self.bins
+    def x(self) -> np.ndarray: 
+        """Return the x dimension (bins)"""
+        return self.bins
     
     @property
-    def y(self) -> np.ndarray: return self.pmf
+    def y(self) -> np.ndarray: 
+        """Returns the y dimension (pmf)"""
+        return self.pmf
 
 
 @dataclass

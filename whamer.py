@@ -1,7 +1,3 @@
-# ---------------------------------------------------------
-# DISCLAIMER: This code has been typed and commented by Gemini.
-# ---------------------------------------------------------
-
 """
 whamer.py
 Implementation of the Weighted Histogram Analysis Method (WHAM).
@@ -124,7 +120,7 @@ def wham(
         if not converged:
             print(f"WARNING: WHAM did not converge. Final delta: {delta:.6e}")
         else:
-            print(f"WHAM converged. Final delta: {delta:.6e}")
+            print(f"WHAM converged :). Final delta: {delta:.6e}")
 
     # Re-calculate final P_0 with converged f_i
     exp_term_final: np.ndarray = np.exp(f_i[:, np.newaxis] - beta * u_ij)
