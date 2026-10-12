@@ -38,11 +38,11 @@ def wham(
         verbose: If True, prints the maximum change (delta) per iteration.
 
     Returns:
-        bin_centers: 1D NumPy array with the center of each bin.
-        pmf: 1D NumPy array with the PMF profile (normalized to min = 0).
+        bin_centers: 1D NumPy array with the centre of each bin.
+        pmf: 1D NumPy array with the PMF profile (normalised to min = 0).
     """
 
-    # 1. Validation and Initial Setup
+    # 1. Validation and initial setup
     n_windows: int = len(trajectories)
     if len(centers) != n_windows or len(force_constants) != n_windows:
         raise ValueError(
@@ -52,7 +52,7 @@ def wham(
     # Number of frames per window (N_i)
     frames_per_window: np.ndarray = np.array([len(traj) for traj in trajectories])
 
-    # 2. Define Bin Range
+    # 2. Define bin range
     if x_range is None:
         all_data: np.ndarray = np.concatenate(trajectories)
         x_min, x_max = np.nanmin(all_data), np.nanmax(all_data)
@@ -63,25 +63,25 @@ def wham(
     else:
         x_min, x_max = x_range
 
-    # 3. Discretization and Histogram Computation
+    # 3. Discretisation and histogram computation
     bin_edges: np.ndarray = np.linspace(x_min, x_max, n_bins + 1)
     bin_centers: np.ndarray = 0.5 * (bin_edges[:-1] + bin_edges[1:])
-    
+
     histograms: List[np.ndarray] = []
     for traj in trajectories:
         counts, _ = np.histogram(traj, bins=bin_edges)
         histograms.append(counts)
-    
-    hist_matrix: np.ndarray = np.array(histograms)  # (n_windows, n_bins)
+
+    hist_matrix: np.ndarray = np.array(histograms)          # (n_windows, n_bins)
     total_counts_per_bin: np.ndarray = np.sum(hist_matrix, axis=0)  # Total counts n_j
 
-    # 4. Bias Energy Matrix (U_ij)
+    # 4. Bias energy matrix (U_ij)
     beta: float = 1.0 / (k_B * temperature)
-    # Using NumPy broadcasting for efficiency
+    # NumPy broadcasting for efficiency
     dist_sq: np.ndarray = (bin_centers[np.newaxis, :] - centers[:, np.newaxis]) ** 2
     u_ij: np.ndarray = 0.5 * force_constants[:, np.newaxis] * dist_sq
 
-    # 5. Iterative Self-Consistent Solver
+    # 5. Iterative self-consistent solver
     # Initial guess for free energies (f_i)
     f_i: np.ndarray = np.log(frames_per_window).astype(float)
     converged: bool = False
@@ -98,7 +98,7 @@ def wham(
         p_0[valid_bins] = total_counts_per_bin[valid_bins] / denom_j[valid_bins]
 
         # Update f_i: f_i = -ln( sum_j [ P_0 * exp(-beta * U_ij) ] )
-        # Log-Sum-Exp strategy for numerical stability
+        # Log-sum-exp trick for numerical stability
         f_i_new: np.ndarray = np.zeros(n_windows)
         for i in range(n_windows):
             log_weights: np.ndarray = np.log(p_0 + 1e-300) - (beta * u_ij[i, :])
@@ -115,7 +115,7 @@ def wham(
             converged = True
             break
 
-    # 6. PMF Profile Generation
+    # 6. PMF profile generation
     if verbose:
         if not converged:
             print(f"WARNING: WHAM did not converge. Final delta: {delta:.6e}")
@@ -125,7 +125,7 @@ def wham(
     # Re-calculate final P_0 with converged f_i
     exp_term_final: np.ndarray = np.exp(f_i[:, np.newaxis] - beta * u_ij)
     denom_final: np.ndarray = np.sum(frames_per_window[:, np.newaxis] * exp_term_final, axis=0)
-    
+
     p_0_final: np.ndarray = np.zeros_like(denom_final)
     valid_final: np.ndarray = denom_final > 0
     p_0_final[valid_final] = total_counts_per_bin[valid_final] / denom_final[valid_final]
@@ -140,4 +140,3 @@ def wham(
         pmf -= np.nanmin(pmf)
 
     return bin_centers, pmf
-    

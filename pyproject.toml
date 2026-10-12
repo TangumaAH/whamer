@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "whamer"
+version = "0.1.0"
+description = "Simple Weighted Histogram Analysis Method (WHAM) implementation in Python."
+authors = [
+    { name = "Alejandro H. Tanguma" }
+]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.21.6",
+    "scipy>=1.7.3",
+]
+keywords = ["wham", "pmf", "free energy", "molecular dynamics", "gromacs"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Physics",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+compute_profile = "whamer.computer:main"
+
+[project.urls]
+Homepage = "https://github.com/TangumaAH/whamer"
+Repository = "https://github.com/TangumaAH/whamer"
+"Bug Tracker" = "https://github.com/TangumaAH/whamer/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["whamer*"]
